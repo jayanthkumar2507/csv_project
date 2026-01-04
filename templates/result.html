@@ -1,57 +1,21 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Resume Analysis Result</title>
-
-    <!-- THIS LINE IS CRITICAL -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-
 <body>
 
-<div class="result-container">
-    <div class="result-box">
-
+<div class="page">
+    <div class="box">
         <h1>Resume Analysis Result</h1>
 
-        <div class="section">
-            <h3>Target Role</h3>
-            <p>{{ role }}</p>
-        </div>
+        <pre style="white-space: pre-wrap;">{{ data }}</pre>
 
-        <div class="section">
-            <h3>Skills Identified</h3>
-            <ul>
-                {% for s in skills %}
-                <li>{{ s }}</li>
-                {% endfor %}
-            </ul>
-        </div>
-
-        <div class="section">
-            <h3>Strengths</h3>
-            <ul>
-                {% for s in strengths %}
-                <li>{{ s }}</li>
-                {% endfor %}
-            </ul>
-        </div>
-
-        <div class="section">
-            <h3>Skill Gaps</h3>
-            <ul>
-                {% for g in gaps %}
-                <li>{{ g }}</li>
-                {% endfor %}
-            </ul>
-        </div>
-
-        <div class="actions">
-            <a href="/" class="btn">Analyze Another Resume</a>
-        </div>
-
+        <form action="/">
+            <button type="submit">Analyze Another Resume</button>
+        </form>
     </div>
 </div>
 

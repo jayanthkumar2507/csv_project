@@ -2,63 +2,70 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
 }
 
 body {
     min-height: 100vh;
+    background: linear-gradient(135deg, #1e90ff, #00bcd4);
     display: flex;
     justify-content: center;
     align-items: center;
-    background: linear-gradient(135deg, #1e90ff, #00bfff);
-    font-family: Arial, Helvetica, sans-serif;
 }
 
-/* WHITE BOX */
-.upload-box {
+/* Common page wrapper */
+.page {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* White box */
+.box {
     background: #ffffff;
     width: 90%;
-    max-width: 420px;
+    max-width: 500px;
     padding: 30px;
-    border-radius: 14px;
-    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.25);
-    text-align: center;
+    border-radius: 12px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
 }
 
-.upload-box h2 {
-    margin-bottom: 20px;
+/* Title */
+.box h1 {
+    text-align: center;
+    margin-bottom: 25px;
     color: #333;
 }
 
-.upload-box input[type="file"] {
-    width: 100%;
-    padding: 14px;
+/* Upload area */
+.upload-area {
     border: 2px dashed #1e90ff;
+    padding: 25px;
+    text-align: center;
     border-radius: 10px;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
     cursor: pointer;
 }
 
-.upload-box select {
+/* Inputs */
+select,
+button {
     width: 100%;
     padding: 12px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-    margin-bottom: 20px;
-    font-size: 14px;
+    margin-top: 15px;
+    font-size: 16px;
 }
 
-.upload-box button {
-    width: 100%;
-    padding: 14px;
+/* Button */
+button {
     background: #1e90ff;
-    color: white;
-    font-size: 16px;
-    font-weight: bold;
+    color: #fff;
     border: none;
     border-radius: 8px;
     cursor: pointer;
 }
 
-.upload-box button:hover {
-    background: #187bcd;
+button:hover {
+    background: #0f78d1;
 }
