@@ -104,12 +104,7 @@ Resume:
 
     result = response.choices[0].message.content
 
-    return render_template("result.html", data={
-        "strengths": result,
-        "weaknesses": "",
-        "careers": "",
-        "internships": ""
-    })# ------------------ RUN ------------------
+    return render_template("result.html", data=result)# ------------------ RUN ------------------
 
 if __name__ == "__main__":
     app.run(debug=True)
