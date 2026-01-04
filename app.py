@@ -8,21 +8,19 @@ from PyPDF2 import PdfReader
 
 app = Flask(__name__)
 
-# ================= ENV VARIABLES =================
+# ================= ENV =================
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
 SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
 
 if not GROQ_API_KEY:
     raise RuntimeError("GROQ_API_KEY not set")
-
 if not SPREADSHEET_ID:
     raise RuntimeError("SPREADSHEET_ID not set")
-
 if not SERVICE_ACCOUNT_JSON:
     raise RuntimeError("GOOGLE_SERVICE_ACCOUNT_JSON not set")
 
-# ================= GROQ CLIENT (NO STREAMING) =================
+# ================= GROQ =================
 groq_client = Groq(api_key=GROQ_API_KEY)
 
 # ================= GOOGLE SHEETS =================
@@ -45,14 +43,16 @@ def upload():
 def analyze():
     file = request.files["resume"]
 
-    # ---- SAFE PDF READ ----
-    resume_text = ""
+    # ---- SAFE PDF EXTRACTION ----
     reader = PdfReader(file)
+    resume_text = ""
 
-    for page in reader.pages:
+    for page in reader.pages[:5]:   # 🔥 LIMIT PAGES
         text = page.extract_text()
         if text:
             resume_text += text + "\n"
+
+    resume_text = resume_text[:6000]  # 🔥 LIMIT SIZE
 
     if not resume_text.strip():
         resume_text = "Resume content could not be extracted."
@@ -68,16 +68,17 @@ Resume:
 {resume_text}
 """
 
-    # ---- NON-STREAMING CALL (CRITICAL FIX) ----
+    # ---- HARD LIMITED RESPONSE ----
     response = groq_client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+        model="llama3-70b-8192",
         messages=[{"role": "user", "content": prompt}],
-        stream=False   # 🔥 THIS FIXES YOUR ERROR
+        max_tokens=700,     # 🔥 CRITICAL
+        stream=False
     )
 
     result = response.choices[0].message.content
 
-    # ---- SAVE TO SHEET (SAFE) ----
+    # ---- SAFE SHEET WRITE ----
     try:
         sheet.append_row([file.filename, result[:40000]])
     except Exception:
