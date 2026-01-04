@@ -1,75 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Resume Analysis Result</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Result</title>
 </head>
 <body>
-
-<div class="page">
-<div class="card scroll result-card">
-
-<h2>Resume Analysis Result</h2>
-
-<p><strong>Target Role:</strong> {{ data.target_role }}</p>
-
-<hr>
-
-<h3>Skills Identified</h3>
-<ul>
-{% for i in data.skills_identified %}
-<li>{{ i }}</li>
-{% endfor %}
-</ul>
-
-<h3>Strengths</h3>
-<ul>
-{% for i in data.strengths %}
-<li>{{ i }}</li>
-{% endfor %}
-</ul>
-
-{% if data.weaknesses %}
-<h3>Weaknesses</h3>
-<ul>
-{% for i in data.weaknesses %}
-<li>{{ i }}</li>
-{% endfor %}
-</ul>
-{% endif %}
-
-<h3>Skill Gaps</h3>
-<ul>
-{% for i in data.skill_gaps %}
-<li>{{ i }}</li>
-{% endfor %}
-</ul>
-
-<h3>Learning Suggestions</h3>
-<ul>
-{% for i in data.learning_suggestions %}
-<li>{{ i }}</li>
-{% endfor %}
-</ul>
-
-<h3>Recommended Tools</h3>
-<ul>
-{% for i in data.tools_recommended %}
-<li>{{ i }}</li>
-{% endfor %}
-</ul>
-
-<h3>Internship Recommendations</h3>
-<ul>
-{% for i in data.internship_recommendations %}
-<li>{{ i }}</li>
-{% endfor %}
-</ul>
-
-<a href="/" class="link">Analyze another resume</a>
-
-</div>
-</div>
-
+    <h2>Analysis Result</h2>
+    <pre>{{ result }}</pre>
+    <br>
+    <a href="/">Upload another</a>
 </body>
 </html>

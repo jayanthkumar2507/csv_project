@@ -1,19 +1,17 @@
 import os
 import json
 from flask import Flask, render_template, request
+from groq import Groq
 import gspread
 from google.oauth2.service_account import Credentials
-from groq import Groq
 from PyPDF2 import PdfReader
 
 app = Flask(__name__)
 
-# =========================
-# ENV VARIABLES (REQUIRED)
-# =========================
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID")
-GOOGLE_SERVICE_ACCOUNT_JSON = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+# ================= ENV VARIABLES =================
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
+SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
 
 if not GROQ_API_KEY:
     raise RuntimeError("GROQ_API_KEY not set")
@@ -21,103 +19,60 @@ if not GROQ_API_KEY:
 if not SPREADSHEET_ID:
     raise RuntimeError("SPREADSHEET_ID not set")
 
-if not GOOGLE_SERVICE_ACCOUNT_JSON:
+if not SERVICE_ACCOUNT_JSON:
     raise RuntimeError("GOOGLE_SERVICE_ACCOUNT_JSON not set")
 
-
-# =========================
-# GROQ CLIENT
-# =========================
+# ================= GROQ CLIENT =================
 groq_client = Groq(api_key=GROQ_API_KEY)
 
+# ================= GOOGLE SHEETS =================
+service_account_info = json.loads(SERVICE_ACCOUNT_JSON)
 
-# =========================
-# GOOGLE SHEETS CLIENT
-# =========================
-def get_gspread_client():
-    service_account_info = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
+scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+credentials = Credentials.from_service_account_info(
+    service_account_info, scopes=scopes
+)
 
-    scopes = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive"
-    ]
+gc = gspread.authorize(credentials)
+sheet = gc.open_by_key(SPREADSHEET_ID).sheet1
 
-    creds = Credentials.from_service_account_info(
-        service_account_info,
-        scopes=scopes
-    )
-
-    return gspread.authorize(creds)
-
-
-# =========================
-# PDF TEXT EXTRACT
-# =========================
-def extract_text_from_pdf(file):
-    reader = PdfReader(file)
-    text = ""
-    for page in reader.pages:
-        text += page.extract_text() or ""
-    return text.strip()
-
-
-# =========================
-# AI ANALYSIS
-# =========================
-def analyze_resume(text):
-    prompt = f"""
-Analyze the following resume and provide:
-1. Strengths
-2. Weaknesses
-3. Skills
-4. Suggested Job Roles
-5. Internship Suggestions
-6. Learning Recommendations
-
-Resume:
-{text}
-"""
-
-    response = groq_client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.3
-    )
-
-    return response.choices[0].message.content
-
-
-# =========================
-# ROUTES
-# =========================
-@app.route("/", methods=["GET"])
+# ================= ROUTES =================
+@app.route("/")
 def upload():
     return render_template("upload.html")
 
-
 @app.route("/analyze", methods=["POST"])
 def analyze():
-    file = request.files.get("resume")
+    file = request.files["resume"]
 
-    if not file or file.filename == "":
-        return "No file uploaded", 400
+    reader = PdfReader(file)
+    resume_text = ""
+    for page in reader.pages:
+        resume_text += page.extract_text()
 
-    resume_text = extract_text_from_pdf(file)
-    analysis = analyze_resume(resume_text)
+    prompt = f"""
+Analyze this resume and return:
+1. Strengths
+2. Weaknesses
+3. Suggested career roles
+4. Internship recommendations
 
-    # Write to Google Sheet
-    gc = get_gspread_client()
-    sheet = gc.open_by_key(SPREADSHEET_ID).sheet1
-    sheet.append_row([file.filename, analysis])
+Resume:
+{resume_text}
+"""
 
-    return render_template(
-        "result.html",
-        analysis=analysis
+    response = groq_client.chat.completions.create(
+        model="llama3-70b-8192",
+        messages=[{"role": "user", "content": prompt}]
     )
 
+    result = response.choices[0].message.content
 
-# =========================
-# RENDER ENTRY POINT
-# =========================
+    # Save to Google Sheet
+    sheet.append_row([file.filename, result])
+
+    return render_template("result.html", result=result)
+
+# ================= MAIN =================
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    app.run()
