@@ -13,7 +13,6 @@ body {
 .page {
     display: flex;
     justify-content: center;
-    align-items: flex-start;
     padding: 40px 20px;
 }
 
@@ -32,20 +31,15 @@ body {
     color: #222;
 }
 
+.section {
+    margin-top: 10px;
+}
+
 .analysis-text {
+    white-space: pre-wrap;   /* 🔥 MOST IMPORTANT */
     font-size: 16px;
     line-height: 1.8;
     color: #333;
-    white-space: normal;
-    word-break: break-word;
-}
-
-.analysis-text strong {
-    color: #000;
-}
-
-.analysis-text br {
-    margin-bottom: 6px;
 }
 
 .actions {

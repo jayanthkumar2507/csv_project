@@ -9,15 +9,19 @@
 
 <div class="page">
     <div class="result-box">
+
         <h1>Resume Analysis Result</h1>
 
-        <div class="analysis-text">
-            {{ data | replace('\n', '<br>') | safe }}
+        <div class="section">
+            <pre class="analysis-text">
+{{ data }}
+            </pre>
         </div>
 
         <div class="actions">
             <a href="/" class="btn">Analyze Another Resume</a>
         </div>
+
     </div>
 </div>
 
