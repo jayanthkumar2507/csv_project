@@ -85,29 +85,35 @@ def analyze():
     resume_text = resume_text[:6000]  # safety limit
 
     prompt = f"""
-   Analyze the resume and respond EXACTLY in the following format:
+Analyze the resume and respond in CLEAN PLAIN TEXT.
 
-Target Role:
+IMPORTANT RULES:
+- DO NOT use **bold**, markdown, asterisks, or special formatting
+- Use normal headings followed by colon
+- Use simple bullet points with "-"
 
-Skills Identified:
-- skill 1
-- skill 2
+FORMAT EXACTLY LIKE THIS:
 
-Strengths:
-- point 1
-- point 2
+REVIEW OF RESUME:
 
-Skill Gaps:
-- gap 1
-- gap 2
+OVERALL IMPRESSION:
+(text)
 
-Career Suggestions:
-- suggestion 1
-- suggestion 2
+STRENGTHS:
+- point
+- point
 
-Internship Recommendations:
-- internship 1
-- internship 2
+WEAKNESSES:
+- point
+- point
+
+CAREER SUGGESTIONS:
+- point
+- point
+
+INTERNSHIP RECOMMENDATIONS:
+- point
+- point
 
 Resume:
 {resume_text}
