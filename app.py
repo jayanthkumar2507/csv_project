@@ -1,80 +1,79 @@
 import os
-import json
 from flask import Flask, render_template, request
+from werkzeug.utils import secure_filename
+import fitz  # PyMuPDF
 from groq import Groq
-import gspread
-from google.oauth2.service_account import Credentials
-from PyPDF2 import PdfReader
+from dotenv import load_dotenv
+
+# ---------------- CONFIG ----------------
+load_dotenv()
 
 app = Flask(__name__)
+app.config["UPLOAD_FOLDER"] = "uploads"
+os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
-# ================= ENV =================
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
-SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
+client = Groq(api_key=GROQ_API_KEY)
 
-if not GROQ_API_KEY:
-    raise RuntimeError("GROQ_API_KEY not set")
-if not SPREADSHEET_ID:
-    raise RuntimeError("SPREADSHEET_ID not set")
-if not SERVICE_ACCOUNT_JSON:
-    raise RuntimeError("GOOGLE_SERVICE_ACCOUNT_JSON not set")
+# ---------------- PDF TEXT EXTRACTOR ----------------
+def extract_text_from_pdf(pdf_path):
+    text = ""
+    doc = fitz.open(pdf_path)
+    for page in doc:
+        text += page.get_text()
+    return text.strip()
 
-# ================= GROQ =================
-groq_client = Groq(api_key=GROQ_API_KEY)
-
-# ================= GOOGLE SHEETS =================
-service_account_info = json.loads(SERVICE_ACCOUNT_JSON)
-
-credentials = Credentials.from_service_account_info(
-    service_account_info,
-    scopes=["https://www.googleapis.com/auth/spreadsheets"]
-)
-
-gc = gspread.authorize(credentials)
-sheet = gc.open_by_key(SPREADSHEET_ID).sheet1
-
-# ================= ROUTES =================
+# ---------------- ROUTES ----------------
 @app.route("/")
-def upload():
+def home():
     return render_template("upload.html")
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
-    try:
-        file = request.files.get("resume")
-        if not file:
-            return "No file uploaded", 400
+    if "resume" not in request.files:
+        return "No file uploaded"
 
-        # ---- extract text ----
-        resume_text = extract_text(file)  # whatever function you use
+    file = request.files["resume"]
+    if file.filename == "":
+        return "No selected file"
 
-        if not resume_text.strip():
-            return "Resume text could not be extracted", 400
+    filename = secure_filename(file.filename)
+    file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+    file.save(file_path)
 
-        resume_text = resume_text[:6000]
+    resume_text = extract_text_from_pdf(file_path)
 
-        # ---- GROQ CALL ----
-        response = groq_client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[{"role": "user", "content": resume_text}],
-            max_tokens=700,
-            stream=False
-        )
+    if not resume_text:
+        resume_text = "Resume content could not be extracted."
 
-        result = response.choices[0].message.content
+    resume_text = resume_text[:6000]  # safety limit
 
-        # ---- GOOGLE SHEET ----
-        try:
-            sheet.append_row([file.filename, result[:40000]])
-        except Exception as e:
-            print("Sheet error:", e)
+    prompt = f"""
+Analyze the resume and provide:
 
-        return render_template("result.html", result=result)
+1. Strengths
+2. Weaknesses
+3. Career suggestions
+4. Internship recommendations
 
-    except Exception as e:
-        print("ANALYZE ERROR:", e)
-        return f"Internal Error: {e}", 500
-# ================= MAIN =================
+Resume:
+{resume_text}
+"""
+
+    response = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=700
+    )
+
+    result = response.choices[0].message.content
+
+    return render_template(
+        "result.html",
+        filename=filename,
+        result=result
+    )
+
+# ---------------- RUN ----------------
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True)
