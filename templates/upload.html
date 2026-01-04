@@ -1,33 +1,31 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
     <title>Resume Analyzer</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
 <div class="page">
-    <div class="box">
-        <h1>Resume Analyzer</h1>
+    <div class="card">
+
+        <h2>Resume Analyzer</h2>
 
         <form action="/analyze" method="post" enctype="multipart/form-data">
 
-            <label class="upload-area">
-                Click to upload resume (PDF)
-                <input type="file" name="resume" accept=".pdf" hidden required>
-            </label>
+            <input type="file" name="resume" accept=".pdf" required>
 
-            <select name="role" required>
-                <option value="">Select Role</option>
-                <option>Data Analyst</option>
-                <option>Data Scientist</option>
-                <option>Software Engineer</option>
-                <option>Business Analyst</option>
+            <select name="profession" required>
+                <option value="Data Analyst">Data Analyst</option>
+                <option value="Data Scientist">Data Scientist</option>
+                <option value="Web Developer">Web Developer</option>
+                <option value="Software Engineer">Software Engineer</option>
+                <option value="AI / ML Engineer">AI / ML Engineer</option>
             </select>
 
             <button type="submit">Analyze Resume</button>
         </form>
+
     </div>
 </div>
 

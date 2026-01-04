@@ -1,71 +1,64 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: Arial, Helvetica, sans-serif;
-}
-
 body {
-    min-height: 100vh;
-    background: linear-gradient(135deg, #1e90ff, #00bcd4);
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    margin: 0;
+    background: #1ea0ff;
+    font-family: Segoe UI, sans-serif;
 }
 
-/* Common page wrapper */
 .page {
-    width: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
+    min-height: 100vh;
 }
 
-/* White box */
-.box {
-    background: #ffffff;
-    width: 90%;
-    max-width: 500px;
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
-}
-
-/* Title */
-.box h1 {
-    text-align: center;
-    margin-bottom: 25px;
-    color: #333;
-}
-
-/* Upload area */
-.upload-area {
-    border: 2px dashed #1e90ff;
+.card {
+    background: #f7f7f7;
+    width: 420px;
     padding: 25px;
-    text-align: center;
     border-radius: 10px;
-    margin-bottom: 20px;
-    cursor: pointer;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.25);
 }
 
-/* Inputs */
-select,
+.scroll {
+    max-height: 75vh;
+    overflow-y: auto;
+}
+
+h2 {
+    text-align: center;
+}
+
+input, select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
 button {
     width: 100%;
-    padding: 12px;
-    margin-top: 15px;
-    font-size: 16px;
-}
-
-/* Button */
-button {
-    background: #1e90ff;
-    color: #fff;
+    padding: 10px;
+    background: #1e88e5;
+    color: white;
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
     cursor: pointer;
 }
 
 button:hover {
-    background: #0f78d1;
+    background: #1565c0;
+}
+
+.link {
+    display: block;
+    text-align: center;
+    margin-top: 20px;
+    color: #1e88e5;
+    font-weight: bold;
+    text-decoration: none;
+}
+.result-card{
+    width: 800px;
+    max-width: 150vw;
 }

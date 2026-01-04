@@ -1,119 +1,65 @@
-import os
-import json
-import fitz  # PyMuPDF
+import os, json
 from flask import Flask, render_template, request
-from werkzeug.utils import secure_filename
-
-# Google Sheets
+from groq import Groq
+from dotenv import load_dotenv
 import gspread
 from google.oauth2.service_account import Credentials
+from datetime import datetime
+import PyPDF2
 
-# Groq
-from groq import Groq
-
-# ------------------ CONFIG ------------------
-
-UPLOAD_FOLDER = "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
+load_dotenv()
 app = Flask(__name__)
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-# ------------------ PDF TEXT EXTRACT ------------------
+# ---------- GROQ ----------
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-def extract_text_from_pdf(pdf_path):
-    try:
-        text = ""
-        doc = fitz.open(pdf_path)
-        for page in doc:
-            text += page.get_text()
-        return text.strip()
-    except Exception:
-        return ""
+# ---------- GOOGLE SHEETS ----------
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
+creds = Credentials.from_service_account_file("service_account.json", scopes=SCOPES)
+gs = gspread.authorize(creds)
+sheet = gs.open("Resume_Analysis_Data").sheet1
+# ----------------------------------
 
-# ------------------ GOOGLE SHEETS (SAFE) ------------------
-
-sheet = None
-try:
-    service_account_info = json.loads(os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "{}"))
-    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-    creds = Credentials.from_service_account_info(service_account_info, scopes=scopes)
-    client = gspread.authorize(creds)
-    sheet = client.open_by_key(os.environ.get("SPREADSHEET_ID")).sheet1
-except Exception:
-    sheet = None  # app will still work
-
-# ------------------ GROQ CLIENT ------------------
-
-groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-
-# ------------------ ROUTES ------------------
+def extract_text(pdf):
+    reader = PyPDF2.PdfReader(pdf)
+    text = ""
+    for page in reader.pages:
+        if page.extract_text():
+            text += page.extract_text()
+    return text
 
 @app.route("/")
-def home():
+def upload():
     return render_template("upload.html")
 
-@app.route("/analyze", methods=["GET", "POST"])
+@app.route("/analyze", methods=["POST"])
 def analyze():
-
-    # 👉 DIRECT OPEN (GET request)
-    if request.method == "GET":
-        return render_template("result.html", data={
-            "strengths": "Upload a resume to analyze strengths.",
-            "weaknesses": "Upload a resume to analyze weaknesses.",
-            "careers": "Career suggestions will appear here.",
-            "internships": "Internship recommendations will appear here."
-        })
-
-    # 👉 FORM SUBMISSION (POST request)
-    if "resume" not in request.files:
-        return "No file uploaded"
-
-    file = request.files["resume"]
-    if file.filename == "":
-        return "No selected file"
-
-    filename = secure_filename(file.filename)
-    file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-    file.save(file_path)
-
-    resume_text = extract_text_from_pdf(file_path)
-
-    if not resume_text.strip():
-        resume_text = "Resume content could not be extracted."
-
-    resume_text = resume_text[:6000]  # safety limit
+    resume_text = extract_text(request.files["resume"])
+    profession = request.form.get("profession")
 
     prompt = f"""
-Analyze the resume and respond in CLEAN PLAIN TEXT.
+You are an expert resume evaluator for STUDENT / INTERN level candidates.
 
-IMPORTANT RULES:
-- DO NOT use **bold**, markdown, asterisks, or special formatting
-- Use normal headings followed by colon
-- Use simple bullet points with "-"
+Target Profession: {profession}
 
-FORMAT EXACTLY LIKE THIS:
+Return ONLY valid JSON. Do NOT include score.
 
-REVIEW OF RESUME:
+Ensure weaknesses are REAL skill-based weaknesses.
 
-OVERALL IMPRESSION:
-(text)
-
-STRENGTHS:
-- point
-- point
-
-WEAKNESSES:
-- point
-- point
-
-CAREER SUGGESTIONS:
-- point
-- point
-
-INTERNSHIP RECOMMENDATIONS:
-- point
-- point
+Format:
+{{
+  "target_role": "{profession}",
+  "skills_identified": [],
+  "strengths": [],
+  "weaknesses": [],
+  "skill_gaps": [],
+  "learning_suggestions": [],
+  "tools_recommended": [],
+  "internship_recommendations": []
+}}
 
 Resume:
 {resume_text}
@@ -122,19 +68,38 @@ Resume:
     response = groq_client.chat.completions.create(
         model="llama-3.1-8b-instant",
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=700,
-        stream=False
+        temperature=0.3
     )
 
-    result = response.choices[0].message.content
+    raw = response.choices[0].message.content.strip()
 
-    return render_template(
-    "result.html",
-    role=selected_role,
-    skills=skills_list,
-    strengths=strengths_list,
-    gaps=skill_gaps_list
-)# ------------------ RUN ------------------
+    try:
+        data = json.loads(raw)
+    except:
+        data = {
+            "target_role": profession,
+            "skills_identified": ["Python"],
+            "strengths": ["Basic programming knowledge"],
+            "weaknesses": [
+                "Limited hands-on project experience",
+                "Lack of real-world industry exposure"
+            ],
+            "skill_gaps": ["Advanced concepts"],
+            "learning_suggestions": ["Practice projects"],
+            "tools_recommended": ["Git", "VS Code"],
+            "internship_recommendations": [f"{profession} Intern"]
+        }
+
+    # Save to Google Sheets
+    sheet.append_row([
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        data["target_role"],
+        ", ".join(data["skills_identified"]),
+        ", ".join(data["weaknesses"]),
+        ", ".join(data["internship_recommendations"])
+    ])
+
+    return render_template("result.html", data=data)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000)
