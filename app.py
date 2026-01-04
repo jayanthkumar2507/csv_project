@@ -85,25 +85,29 @@ def analyze():
     resume_text = resume_text[:6000]  # safety limit
 
     prompt = f"""
-Analyze the resume and give the response in CLEAR SECTIONS.
+   Analyze the resume and respond EXACTLY in the following format:
 
-Use this exact format:
+Target Role:
 
-STRENGTHS:
+Skills Identified:
+- skill 1
+- skill 2
+
+Strengths:
 - point 1
 - point 2
 
-WEAKNESSES:
-- point 1
-- point 2
+Skill Gaps:
+- gap 1
+- gap 2
 
-CAREER SUGGESTIONS:
-- point 1
-- point 2
+Career Suggestions:
+- suggestion 1
+- suggestion 2
 
-INTERNSHIP RECOMMENDATIONS:
-- point 1
-- point 2
+Internship Recommendations:
+- internship 1
+- internship 2
 
 Resume:
 {resume_text}
