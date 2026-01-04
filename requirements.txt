@@ -5,3 +5,4 @@ PyPDF2
 gspread
 google-auth
 gunicorn
+requests
