@@ -1,47 +1,72 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Result</title>
+    <title>Resume Analysis Result</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
 <div class="page">
-<div class="card scroll">
+<div class="card scroll result-card">
 
-<h2 id="aa">Resume Analysis Result</h2>
+<h2>Resume Analysis Result</h2>
 
-<div class="section">
+<p><strong>Target Role:</strong> {{ data.target_role }}</p>
+
+<hr>
+
+<h3>Skills Identified</h3>
+<ul>
+{% for i in data.skills_identified %}
+<li>{{ i }}</li>
+{% endfor %}
+</ul>
+
 <h3>Strengths</h3>
-<ul>{% for i in result.strengths %}<li>{{ i }}</li>{% endfor %}</ul>
-</div>
+<ul>
+{% for i in data.strengths %}
+<li>{{ i }}</li>
+{% endfor %}
+</ul>
 
-<div class="section">
+{% if data.weaknesses %}
 <h3>Weaknesses</h3>
-<ul>{% for i in result.weaknesses %}<li>{{ i }}</li>{% endfor %}</ul>
-</div>
+<ul>
+{% for i in data.weaknesses %}
+<li>{{ i }}</li>
+{% endfor %}
+</ul>
+{% endif %}
 
-<div class="section">
 <h3>Skill Gaps</h3>
-<ul>{% for i in result.skill_gaps %}<li>{{ i }}</li>{% endfor %}</ul>
-</div>
+<ul>
+{% for i in data.skill_gaps %}
+<li>{{ i }}</li>
+{% endfor %}
+</ul>
 
-<div class="section">
 <h3>Learning Suggestions</h3>
-<ul>{% for i in result.learning_suggestions %}<li>{{ i }}</li>{% endfor %}</ul>
-</div>
+<ul>
+{% for i in data.learning_suggestions %}
+<li>{{ i }}</li>
+{% endfor %}
+</ul>
 
-<div class="section">
 <h3>Recommended Tools</h3>
-<ul>{% for i in result.tools %}<li>{{ i }}</li>{% endfor %}</ul>
-</div>
+<ul>
+{% for i in data.tools_recommended %}
+<li>{{ i }}</li>
+{% endfor %}
+</ul>
 
-<div class="section">
 <h3>Internship Recommendations</h3>
-<ul>{% for i in result.internships %}<li>{{ i }}</li>{% endfor %}</ul>
-</div>
+<ul>
+{% for i in data.internship_recommendations %}
+<li>{{ i }}</li>
+{% endfor %}
+</ul>
 
-<a href="/" class="btn">Analyze another resume</a>
+<a href="/" class="link">Analyze another resume</a>
 
 </div>
 </div>
