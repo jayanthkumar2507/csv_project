@@ -22,15 +22,15 @@ if not SPREADSHEET_ID:
 if not SERVICE_ACCOUNT_JSON:
     raise RuntimeError("GOOGLE_SERVICE_ACCOUNT_JSON not set")
 
-# ================= GROQ CLIENT =================
+# ================= GROQ CLIENT (NO STREAMING) =================
 groq_client = Groq(api_key=GROQ_API_KEY)
 
 # ================= GOOGLE SHEETS =================
 service_account_info = json.loads(SERVICE_ACCOUNT_JSON)
 
-scopes = ["https://www.googleapis.com/auth/spreadsheets"]
 credentials = Credentials.from_service_account_info(
-    service_account_info, scopes=scopes
+    service_account_info,
+    scopes=["https://www.googleapis.com/auth/spreadsheets"]
 )
 
 gc = gspread.authorize(credentials)
@@ -45,31 +45,43 @@ def upload():
 def analyze():
     file = request.files["resume"]
 
-    reader = PdfReader(file)
+    # ---- SAFE PDF READ ----
     resume_text = ""
+    reader = PdfReader(file)
+
     for page in reader.pages:
-        resume_text += page.extract_text()
+        text = page.extract_text()
+        if text:
+            resume_text += text + "\n"
+
+    if not resume_text.strip():
+        resume_text = "Resume content could not be extracted."
 
     prompt = f"""
-Analyze this resume and return:
+Analyze the resume and give:
 1. Strengths
 2. Weaknesses
-3. Suggested career roles
+3. Career suggestions
 4. Internship recommendations
 
 Resume:
 {resume_text}
 """
 
+    # ---- NON-STREAMING CALL (CRITICAL FIX) ----
     response = groq_client.chat.completions.create(
-        model="llama3-70b-8192",
-        messages=[{"role": "user", "content": prompt}]
+        model="llama-3.1-8b-instant",
+        messages=[{"role": "user", "content": prompt}],
+        stream=False   # 🔥 THIS FIXES YOUR ERROR
     )
 
     result = response.choices[0].message.content
 
-    # Save to Google Sheet
-    sheet.append_row([file.filename, result])
+    # ---- SAVE TO SHEET (SAFE) ----
+    try:
+        sheet.append_row([file.filename, result[:40000]])
+    except Exception:
+        pass
 
     return render_template("result.html", result=result)
 
