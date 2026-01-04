@@ -53,28 +53,39 @@ groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 def home():
     return render_template("upload.html")
 
-@app.route("/analyze", methods=["POST"])
+@app.route("/analyze", methods=["GET", "POST"])
 def analyze():
-    try:
-        if "resume" not in request.files:
-            return "No file uploaded"
 
-        file = request.files["resume"]
-        if file.filename == "":
-            return "No selected file"
+    # 👉 DIRECT OPEN (GET request)
+    if request.method == "GET":
+        return render_template("result.html", data={
+            "strengths": "Upload a resume to analyze strengths.",
+            "weaknesses": "Upload a resume to analyze weaknesses.",
+            "careers": "Career suggestions will appear here.",
+            "internships": "Internship recommendations will appear here."
+        })
 
-        filename = secure_filename(file.filename)
-        file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-        file.save(file_path)
+    # 👉 FORM SUBMISSION (POST request)
+    if "resume" not in request.files:
+        return "No file uploaded"
 
-        resume_text = extract_text_from_pdf(file_path)
-        if not resume_text:
-            resume_text = "Resume content could not be extracted."
+    file = request.files["resume"]
+    if file.filename == "":
+        return "No selected file"
 
-        resume_text = resume_text[:6000]  # safety limit
+    filename = secure_filename(file.filename)
+    file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+    file.save(file_path)
 
-        prompt = f"""
-Analyze the resume and provide:
+    resume_text = extract_text_from_pdf(file_path)
+
+    if not resume_text.strip():
+        resume_text = "Resume content could not be extracted."
+
+    resume_text = resume_text[:6000]  # safety limit
+
+    prompt = f"""
+Analyze the resume and give:
 1. Strengths
 2. Weaknesses
 3. Career suggestions
@@ -84,31 +95,21 @@ Resume:
 {resume_text}
 """
 
-        # ---- AI CALL (SAFE) ----
-        try:
-            response = groq_client.chat.completions.create(
-                model="llama-3.1-8b-instant",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=700,
-                stream=False
-            )
-            result = response.choices[0].message.content
-        except Exception:
-            result = "AI analysis failed. Please try again later."
+    response = groq_client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=700,
+        stream=False
+    )
 
-        # ---- GOOGLE SHEET WRITE (OPTIONAL) ----
-        if sheet:
-            try:
-                sheet.append_row([filename, result[:40000]])
-            except Exception:
-                pass
+    result = response.choices[0].message.content
 
-        return render_template("result.html", data=result)
-
-    except Exception as e:
-        return f"Internal Error: {str(e)}", 500
-
-# ------------------ RUN ------------------
+    return render_template("result.html", data={
+        "strengths": result,
+        "weaknesses": "",
+        "careers": "",
+        "internships": ""
+    })# ------------------ RUN ------------------
 
 if __name__ == "__main__":
     app.run(debug=True)
