@@ -103,7 +103,7 @@ Resume:
             except Exception:
                 pass
 
-        return render_template("result.html", result=result)
+        return render_template("result.html", data=result)
 
     except Exception as e:
         return f"Internal Error: {str(e)}", 500
