@@ -1,27 +1,29 @@
-<div class="section">
-    <p><span class="side-heading">Target Role:</span><br>
-    Data Scientist or Business Analyst</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Resume Analysis Result</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
 
-    <p><span class="side-heading">Skills Identified:</span></p>
-    <ul>
-        <li>Python programming</li>
-        <li>Data visualization using Matplotlib</li>
-        <li>Data cleaning techniques</li>
-        <li>Data preprocessing</li>
-        <li>Leadership and time management</li>
-    </ul>
+<div class="page">
+    <div class="result-box">
 
-    <p><span class="side-heading">Strengths:</span></p>
-    <ul>
-        <li>Self-motivated team player with leadership skills</li>
-        <li>Aesthetic data visualization skills</li>
-        <li>Timely task completion</li>
-        <li>Effective use of Python libraries</li>
-    </ul>
+        <h1>Resume Analysis Result</h1>
 
-    <p><span class="side-heading">Skill Gaps:</span></p>
-    <ul>
-        <li>Limited experience with machine learning</li>
-        <li>Limited exposure to advanced data science techniques</li>
-    </ul>
+        <div class="section">
+            <pre class="analysis-text">
+{{ data }}
+            </pre>
+        </div>
+
+        <div class="actions">
+            <a href="/" class="btn">Analyze Another Resume</a>
+        </div>
+
+    </div>
 </div>
+
+</body>
+</html>
