@@ -1,8 +1,10 @@
 flask
-groq
+gunicorn
 python-dotenv
-PyPDF2
+requests
+groq
 gspread
 google-auth
-gunicorn
-google-api-python-client
+google-auth-oauthlib
+google-auth-httplib2
+PyPDF2
