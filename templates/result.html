@@ -1,55 +1,14 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Resume Analysis Result</title>
+    <title>Analysis Result</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-
-<div class="page">
-    <div class="result-box">
-        <h1>Resume Analysis Result</h1>
-
-        <div class="section">
-            <h3>Target Role</h3>
-            <p>Data Scientist or Business Analyst</p>
-        </div>
-
-        <div class="section">
-            <h3>Skills Identified</h3>
-            <ul>
-                <li>Python programming</li>
-                <li>Data visualization using Matplotlib</li>
-                <li>Data cleaning techniques</li>
-                <li>Data preprocessing</li>
-                <li>Leadership and time management</li>
-            </ul>
-        </div>
-
-        <div class="section">
-            <h3>Strengths</h3>
-            <ul>
-                <li>Self-motivated team player with leadership skills</li>
-                <li>Aesthetic data visualization skills</li>
-                <li>Timely task completion</li>
-                <li>Effective use of Python libraries</li>
-            </ul>
-        </div>
-
-        <div class="section">
-            <h3>Skill Gaps</h3>
-            <ul>
-                <li>Limited experience with machine learning</li>
-                <li>Limited exposure to advanced data science techniques</li>
-            </ul>
-        </div>
-
-        <div class="actions">
-            <a href="/" class="btn">Analyze Another Resume</a>
-        </div>
+    <div class="container">
+        <h1>Resume Analysis</h1>
+        <pre>{{ result }}</pre>
+        <a href="/">Analyze another resume</a>
     </div>
-</div>
-
 </body>
 </html>
