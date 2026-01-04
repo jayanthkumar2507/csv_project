@@ -1,136 +1,123 @@
-import os
-import json
-import requests
-from flask import Flask, render_template, request
-import PyPDF2
-
-import gspread
-from google.oauth2.service_account import Credentials
-
-# ---------------- BASIC CONFIG ----------------
-UPLOAD_FOLDER = "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+import os, json
+from flask import Flask, render_template, request, redirect
+from groq import Groq
+from PyPDF2 import PdfReader
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 
 app = Flask(__name__)
 
-# ---------------- ENV VARIABLES ----------------
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID")
-GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
+# -------- GROQ --------
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+# -------- GOOGLE SHEETS --------
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID")
 
-SCOPES = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
-]
+creds = service_account.Credentials.from_service_account_file(
+    "service_account.json", scopes=SCOPES
+)
 
-# ---------------- GOOGLE SHEETS ----------------
-def get_sheet():
-    service_account_info = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
+sheet_service = build("sheets", "v4", credentials=creds)
 
-    creds = Credentials.from_service_account_info(
-        service_account_info,
-        scopes=SCOPES
-    )
-
-    client = gspread.authorize(creds)
-    return client.open_by_key(GOOGLE_SHEET_ID).sheet1
-
-# ---------------- PDF UTILS ----------------
-def extract_text_from_pdf(pdf_path):
+# -------- HELPERS --------
+def extract_text(pdf_file):
+    reader = PdfReader(pdf_file)
     text = ""
-    with open(pdf_path, "rb") as f:
-        reader = PyPDF2.PdfReader(f)
-        for page in reader.pages:
-            if page.extract_text():
-                text += page.extract_text()
-    return text.strip()
+    for page in reader.pages:
+        text += page.extract_text() or ""
+    return text
 
-# ---------------- GROQ (FINAL FIXED VERSION) ----------------
-def analyze_with_groq(resume_text):
-    if not GROQ_API_KEY:
-        raise Exception("GROQ_API_KEY not set")
 
-    # Prevent Groq 400 error (token overflow)
-    resume_text = resume_text[:6000]
+def analyze_resume(text, profession):
+    prompt = f"""
+You are an expert resume reviewer.
 
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
+Analyze the resume for the target profession:
+{profession}
 
-    payload = {
-        "model": "llama-3.1-8b-instant",
-        "messages": [
-            {
-                "role": "system",
-                "content": "You are an expert resume analyzer."
-            },
-            {
-                "role": "user",
-                "content": f"""
-Analyze the resume and respond ONLY with the following sections:
+Rules:
+- strengths → positive skills or qualities
+- weaknesses → soft-skill or experience limitations
+- skill_gaps → missing technical skills (nouns only)
+- learning_suggestions → action steps (verbs like Learn, Build, Practice)
+- tools → software or technologies only
+- internships → realistic internship roles
 
-Strengths:
-Weaknesses:
-Skill Gaps:
-Recommended Job Roles:
-Internship Suggestions:
+Do NOT repeat ideas across sections.
+Return ONLY valid JSON.
+
+JSON FORMAT:
+{{
+  "strengths": [],
+  "weaknesses": [],
+  "skill_gaps": [],
+  "learning_suggestions": [],
+  "tools": [],
+  "internships": []
+}}
 
 Resume:
-{resume_text}
+{text}
 """
-            }
-        ],
-        "temperature": 0.4,
-        "max_tokens": 700
-    }
 
-    response = requests.post(GROQ_URL, headers=headers, json=payload)
+    response = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.15
+    )
 
-    if response.status_code != 200:
-        raise Exception(f"Groq API Error {response.status_code}: {response.text}")
+    return json.loads(response.choices[0].message.content)
 
-    return response.json()["choices"][0]["message"]["content"]
 
-# ---------------- ROUTES ----------------
+def safe_join(items):
+    cleaned = []
+    for i in items:
+        if isinstance(i, dict):
+            cleaned.append(str(list(i.values())[0]))
+        else:
+            cleaned.append(str(i))
+    return " | ".join(cleaned)
+
+
+def save_to_sheets(filename, profession, result):
+    values = [[
+        filename,
+        profession,
+        safe_join(result["strengths"]),
+        safe_join(result["weaknesses"]),
+        safe_join(result["skill_gaps"]),
+        safe_join(result["learning_suggestions"]),
+        safe_join(result["tools"]),
+        safe_join(result["internships"])
+    ]]
+
+    sheet_service.spreadsheets().values().append(
+        spreadsheetId=SPREADSHEET_ID,
+        range="Sheet1!A1",
+        valueInputOption="RAW",
+        body={"values": values}
+    ).execute()# -------- ROUTES --------
 @app.route("/")
 def home():
     return render_template("upload.html")
 
-@app.route("/analyze", methods=["POST"])
+
+@app.route("/analyze", methods=["POST", "GET"])
 def analyze():
-    try:
-        if "resume" not in request.files:
-            return "No file uploaded", 400
+    if request.method == "GET":
+        return redirect("/")
 
-        file = request.files["resume"]
-        if file.filename == "":
-            return "Empty file", 400
+    file = request.files["resume"]
+    profession = request.form.get("profession")
 
-        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
-        file.save(file_path)
+    text = extract_text(file)
+    result = analyze_resume(text, profession)
 
-        resume_text = extract_text_from_pdf(file_path)
-        if not resume_text:
-            return "Unable to extract text from PDF", 400
+    save_to_sheets(file.filename, profession, result)
 
-        analysis = analyze_with_groq(resume_text)
+    return render_template("result.html", result=result)
 
-        # Save to Google Sheets (safe, non-blocking)
-        try:
-            sheet = get_sheet()
-            sheet.append_row([file.filename, analysis])
-        except Exception as sheet_error:
-            print("Google Sheets error:", sheet_error)
 
-        return render_template("result.html", analysis=analysis)
-
-    except Exception as e:
-        print("APP ERROR:", e)
-        return f"Internal Error: {e}", 500
-
-# ---------------- RUN ----------------
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True)

@@ -1,42 +1,49 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Analysis Result</title>
-    <style>
-        .qq {
-            margin: 0;
-            padding: 0;
-            min-height: 100%;
-            font-family: Arial, sans-serif;
-            background:aqua;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        .container {
-            background:aqua;
-            padding: 30px;
-            border-radius: 8px;
-            max-width: 800px;
-            margin: auto;
-            white-space: pre-wrap;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        a {
-            display: inline-block;
-            margin-top: 20px;
-            text-decoration: none;
-            color: #4CAF50;
-        }
-    </style>
+    <title>Result</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body id="qq">
+<body>
 
-<div class="container">
-    <h2>Resume Analysis Result</h2>
-    <p>{{ analysis }}</p>
-    <a href="/">Analyze another resume</a>
+<div class="page">
+<div class="card scroll">
+
+<h2 id="aa">Resume Analysis Result</h2>
+
+<div class="section">
+<h3>Strengths</h3>
+<ul>{% for i in result.strengths %}<li>{{ i }}</li>{% endfor %}</ul>
+</div>
+
+<div class="section">
+<h3>Weaknesses</h3>
+<ul>{% for i in result.weaknesses %}<li>{{ i }}</li>{% endfor %}</ul>
+</div>
+
+<div class="section">
+<h3>Skill Gaps</h3>
+<ul>{% for i in result.skill_gaps %}<li>{{ i }}</li>{% endfor %}</ul>
+</div>
+
+<div class="section">
+<h3>Learning Suggestions</h3>
+<ul>{% for i in result.learning_suggestions %}<li>{{ i }}</li>{% endfor %}</ul>
+</div>
+
+<div class="section">
+<h3>Recommended Tools</h3>
+<ul>{% for i in result.tools %}<li>{{ i }}</li>{% endfor %}</ul>
+</div>
+
+<div class="section">
+<h3>Internship Recommendations</h3>
+<ul>{% for i in result.internships %}<li>{{ i }}</li>{% endfor %}</ul>
+</div>
+
+<a href="/" class="btn">Analyze another resume</a>
+
+</div>
 </div>
 
 </body>
