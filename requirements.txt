@@ -1,0 +1,7 @@
+flask
+groq
+python-dotenv
+PyPDF2
+gspread
+google-auth
+gunicorn

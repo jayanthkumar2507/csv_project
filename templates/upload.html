@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Resume Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="page">
+    <div class="card">
+
+        <h2>Resume Analyzer</h2>
+
+        <form action="/analyze" method="post" enctype="multipart/form-data">
+
+            <input type="file" name="resume" accept=".pdf" required>
+
+            <select name="profession" required>
+                <option value="Data Analyst">Data Analyst</option>
+                <option value="Data Scientist">Data Scientist</option>
+                <option value="Web Developer">Web Developer</option>
+                <option value="Software Engineer">Software Engineer</option>
+                <option value="AI / ML Engineer">AI / ML Engineer</option>
+            </select>
+
+            <button type="submit">Analyze Resume</button>
+        </form>
+
+    </div>
+</div>
+
+</body>
+</html>
