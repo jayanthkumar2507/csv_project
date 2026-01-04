@@ -128,7 +128,13 @@ Resume:
 
     result = response.choices[0].message.content
 
-    return render_template("result.html", data=result)# ------------------ RUN ------------------
+    return render_template(
+    "result.html",
+    role=selected_role,
+    skills=skills_list,
+    strengths=strengths_list,
+    gaps=skill_gaps_list
+)# ------------------ RUN ------------------
 
 if __name__ == "__main__":
     app.run(debug=True)
