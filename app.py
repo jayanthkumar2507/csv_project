@@ -41,51 +41,40 @@ def upload():
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
-    file = request.files["resume"]
-
-    # ---- SAFE PDF EXTRACTION ----
-    reader = PdfReader(file)
-    resume_text = ""
-
-    for page in reader.pages[:5]:   # 🔥 LIMIT PAGES
-        text = page.extract_text()
-        if text:
-            resume_text += text + "\n"
-
-    resume_text = resume_text[:6000]  # 🔥 LIMIT SIZE
-
-    if not resume_text.strip():
-        resume_text = "Resume content could not be extracted."
-
-    prompt = f"""
-Analyze the resume and give:
-1. Strengths
-2. Weaknesses
-3. Career suggestions
-4. Internship recommendations
-
-Resume:
-{resume_text}
-"""
-
-    # ---- HARD LIMITED RESPONSE ----
-    response = groq_client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=700,     # 🔥 CRITICAL
-        stream=False
-    )
-
-    result = response.choices[0].message.content
-
-    # ---- SAFE SHEET WRITE ----
     try:
-        sheet.append_row([file.filename, result[:40000]])
-    except Exception:
-        pass
+        file = request.files.get("resume")
+        if not file:
+            return "No file uploaded", 400
 
-    return render_template("result.html", result=result)
+        # ---- extract text ----
+        resume_text = extract_text(file)  # whatever function you use
 
+        if not resume_text.strip():
+            return "Resume text could not be extracted", 400
+
+        resume_text = resume_text[:6000]
+
+        # ---- GROQ CALL ----
+        response = groq_client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": resume_text}],
+            max_tokens=700,
+            stream=False
+        )
+
+        result = response.choices[0].message.content
+
+        # ---- GOOGLE SHEET ----
+        try:
+            sheet.append_row([file.filename, result[:40000]])
+        except Exception as e:
+            print("Sheet error:", e)
+
+        return render_template("result.html", result=result)
+
+    except Exception as e:
+        print("ANALYZE ERROR:", e)
+        return f"Internal Error: {e}", 500
 # ================= MAIN =================
 if __name__ == "__main__":
     app.run()
