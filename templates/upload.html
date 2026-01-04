@@ -7,13 +7,16 @@
 </head>
 <body>
 
+    <!-- WHITE CENTER BOX -->
     <div class="upload-box">
         <h2>Resume Analyzer</h2>
 
         <form action="/analyze" method="POST" enctype="multipart/form-data">
+
             <input type="file" name="resume" accept=".pdf" required>
 
             <select name="role" required>
+                <option value="">Select Target Role</option>
                 <option value="Software Engineer">Software Engineer</option>
                 <option value="Data Analyst">Data Analyst</option>
                 <option value="Data Scientist">Data Scientist</option>
