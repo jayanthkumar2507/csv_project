@@ -1,21 +1,33 @@
 import os
+import json
+import fitz
+import gspread
 from flask import Flask, render_template, request
 from werkzeug.utils import secure_filename
-import fitz  # PyMuPDF
 from groq import Groq
-from dotenv import load_dotenv
-
-# ---------------- CONFIG ----------------
-load_dotenv()
+from google.oauth2.service_account import Credentials
 
 app = Flask(__name__)
-app.config["UPLOAD_FOLDER"] = "uploads"
-os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-client = Groq(api_key=GROQ_API_KEY)
+# ---------------- CONFIG ----------------
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-# ---------------- PDF TEXT EXTRACTOR ----------------
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID")
+SERVICE_ACCOUNT_JSON = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+
+groq_client = Groq(api_key=GROQ_API_KEY)
+
+# ---------- GOOGLE SHEETS ----------
+scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+service_account_info = json.loads(SERVICE_ACCOUNT_JSON)
+creds = Credentials.from_service_account_info(service_account_info, scopes=scopes)
+gc = gspread.authorize(creds)
+sheet = gc.open_by_key(SPREADSHEET_ID).sheet1
+
+# -------- PDF TEXT EXTRACTOR ----------
 def extract_text_from_pdf(pdf_path):
     text = ""
     doc = fitz.open(pdf_path)
@@ -23,7 +35,7 @@ def extract_text_from_pdf(pdf_path):
         text += page.get_text()
     return text.strip()
 
-# ---------------- ROUTES ----------------
+# --------------- ROUTES ----------------
 @app.route("/")
 def home():
     return render_template("upload.html")
@@ -46,11 +58,10 @@ def analyze():
     if not resume_text:
         resume_text = "Resume content could not be extracted."
 
-    resume_text = resume_text[:6000]  # safety limit
+    resume_text = resume_text[:6000]
 
     prompt = f"""
 Analyze the resume and provide:
-
 1. Strengths
 2. Weaknesses
 3. Career suggestions
@@ -60,20 +71,23 @@ Resume:
 {resume_text}
 """
 
-    response = client.chat.completions.create(
+    response = groq_client.chat.completions.create(
         model="llama-3.1-8b-instant",
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=700
+        max_tokens=700,
+        stream=False
     )
 
     result = response.choices[0].message.content
 
-    return render_template(
-        "result.html",
-        filename=filename,
-        result=result
-    )
+    # -------- SAVE TO GOOGLE SHEET --------
+    try:
+        sheet.append_row([filename, result[:40000]])
+    except Exception as e:
+        print("Sheet error:", e)
 
-# ---------------- RUN ----------------
+    return render_template("result.html", result=result)
+
+# ------------ LOCAL RUN ---------------
 if __name__ == "__main__":
     app.run(debug=True)

@@ -1,10 +1,6 @@
 flask
 gunicorn
-python-dotenv
-requests
 groq
+PyMuPDF
 gspread
 google-auth
-google-auth-oauthlib
-google-auth-httplib2
-PyPDF2
