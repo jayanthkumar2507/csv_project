@@ -1,19 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Resume Analysis Result</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
-<div class="result-page">
-    <h1>Resume Analysis Result</h1>
+<div class="card wide">
+  <h2>Resume Analysis Result</h2>
 
-    <pre class="analysis-text">
-{{ analysis }}
-    </pre>
+  <pre>{{ analysis }}</pre>
 
-    <a href="/" class="back-btn">Analyze another resume</a>
+  <a href="/">Analyze Another Resume</a>
 </div>
 
 </body>

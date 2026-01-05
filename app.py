@@ -1,131 +1,81 @@
-import os, json, base64
-from flask import Flask, render_template, request, redirect
+import os, json
+from flask import Flask, render_template, request
 from groq import Groq
 from PyPDF2 import PdfReader
-from google.oauth2 import service_account
+from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
+from datetime import datetime
 
 app = Flask(__name__)
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# ---------- GROQ ----------
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+# Groq
+groq_client = Groq(api_key=os.environ["GROQ_API_KEY"])
 
-# ---------- GOOGLE SHEETS ----------
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-
-service_account_info = json.loads(
-    os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"])
-
-creds = service_account.Credentials.from_service_account_info(
-    service_account_info, scopes=SCOPES
+# Google Sheets
+creds = Credentials.from_service_account_info(
+    json.loads(os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"]),
+    scopes=["https://www.googleapis.com/auth/spreadsheets"]
 )
-
 sheet_service = build("sheets", "v4", credentials=creds)
-SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID")
+SHEET_ID = os.environ["GOOGLE_SHEET_ID"]
 
 
-# ---------- HELPERS ----------
-def extract_text(pdf_file):
-    reader = PdfReader(pdf_file)
-    text = ""
-    for page in reader.pages:
-        text += page.extract_text() or ""
-    return text
-
-
-def analyze_resume(text, profession):
-    prompt = f"""
-Analyze the resume for the profession: {profession}
-
-Return the result in plain text with these headings:
-
-**Strengths**
-(numbered points)
-
-**Weaknesses**
-(numbered points)
-
-**Skill Gaps**
-(numbered points)
-
-**Learning Suggestions**
-(numbered points)
-
-**Recommended Job Roles**
-(numbered points)
-
-Resume:
-{text}
-"""
-
-    response = client.chat.completions.create(
-        model="llama3-70b-8192",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2
-    )
-
-    return response.choices[0].message.content
-
-
-def save_to_sheets(filename, profession, analysis):
-    values = [[filename, profession, analysis]]
-
-    sheet_service.spreadsheets().values().append(
-        spreadsheetId=SPREADSHEET_ID,
-        range="Sheet1!A1",
-        valueInputOption="RAW",
-        body={"values": values}
-    ).execute()
-
-
-# ---------- ROUTES ----------
 @app.route("/")
-def home():
+def upload():
     return render_template("upload.html")
 
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
-    try:
-        # Check file
-        if "resume" not in request.files:
-            return "Resume field missing", 400
+    file = request.files["resume"]
+    role = request.form.get("role", "Not selected")
 
-        file = request.files["resume"]
+    filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+    file.save(filepath)
 
-        if file.filename == "":
-            return "No file selected", 400
+    # Read PDF
+    reader = PdfReader(filepath)
+    resume_text = "\n".join([p.extract_text() or "" for p in reader.pages])
 
-        role = request.form.get("role", "Not selected")
+    prompt = f"""
+Analyze the resume and return ONLY plain text (no **, no markdown):
 
-        # Save file safely
-        filepath = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
-        file.save(filepath)
+Target Role
+Skills Identified
+Strengths
+Skill Gaps
 
-        # SAFE STATIC RESULT (no AI yet)
-        result_text = f"""
-Target Role:
-{role}
-
-Skills Identified:
-- Python programming
-- Data visualization
-- Data cleaning
-
-Strengths:
-- Good fundamentals
-- Logical thinking
-
-Skill Gaps:
-- Machine learning
-- Advanced analytics
+Resume:
+{resume_text}
 """
 
-        return render_template("result.html", data=result_text)
+    response = groq_client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=700
+    )
 
-    except Exception as e:
-        # THIS PREVENTS 500 ERROR
-        return f"Error occurred: {str(e)}", 500
+    analysis = response.choices[0].message.content
+
+    # Save to Google Sheets
+    sheet_service.spreadsheets().values().append(
+        spreadsheetId=SHEET_ID,
+        range="A:D",
+        valueInputOption="RAW",
+        body={
+            "values": [[
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                file.filename,
+                role,
+                analysis
+            ]]
+        }
+    ).execute()
+
+    return render_template("result.html", analysis=analysis)
+
 
 if __name__ == "__main__":
     app.run(debug=True)
