@@ -1,105 +1,101 @@
-import os, json
-from flask import Flask, render_template, request
+import os, json, base64
+from flask import Flask, render_template, request, redirect
 from groq import Groq
-from dotenv import load_dotenv
-import gspread
-from google.oauth2.service_account import Credentials
-from datetime import datetime
-import PyPDF2
+from PyPDF2 import PdfReader
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 
-load_dotenv()
 app = Flask(__name__)
 
 # ---------- GROQ ----------
-groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 # ---------- GOOGLE SHEETS ----------
-SCOPES = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
-]
-creds = Credentials.from_service_account_file("service_account.json", scopes=SCOPES)
-gs = gspread.authorize(creds)
-sheet = gs.open("Resume_Analysis_Data").sheet1
-# ----------------------------------
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
-def extract_text(pdf):
-    reader = PyPDF2.PdfReader(pdf)
+service_account_info = json.loads(
+    os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"])
+
+creds = service_account.Credentials.from_service_account_info(
+    service_account_info, scopes=SCOPES
+)
+
+sheet_service = build("sheets", "v4", credentials=creds)
+SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID")
+
+
+# ---------- HELPERS ----------
+def extract_text(pdf_file):
+    reader = PdfReader(pdf_file)
     text = ""
     for page in reader.pages:
-        if page.extract_text():
-            text += page.extract_text()
+        text += page.extract_text() or ""
     return text
 
+
+def analyze_resume(text, profession):
+    prompt = f"""
+Analyze the resume for the profession: {profession}
+
+Return the result in plain text with these headings:
+
+**Strengths**
+(numbered points)
+
+**Weaknesses**
+(numbered points)
+
+**Skill Gaps**
+(numbered points)
+
+**Learning Suggestions**
+(numbered points)
+
+**Recommended Job Roles**
+(numbered points)
+
+Resume:
+{text}
+"""
+
+    response = client.chat.completions.create(
+        model="llama3-70b-8192",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.2
+    )
+
+    return response.choices[0].message.content
+
+
+def save_to_sheets(filename, profession, analysis):
+    values = [[filename, profession, analysis]]
+
+    sheet_service.spreadsheets().values().append(
+        spreadsheetId=SPREADSHEET_ID,
+        range="Sheet1!A1",
+        valueInputOption="RAW",
+        body={"values": values}
+    ).execute()
+
+
+# ---------- ROUTES ----------
 @app.route("/")
-def upload():
+def home():
     return render_template("upload.html")
+
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
-    resume_text = extract_text(request.files["resume"])
+    file = request.files["resume"]
     profession = request.form.get("profession")
 
-    prompt = f"""
-You are an expert resume evaluator for STUDENT / INTERN level candidates.
+    text = extract_text(file)
+    analysis = analyze_resume(text, profession)
 
-Target Profession: {profession}
+    save_to_sheets(file.filename, profession, analysis)
 
-Return ONLY valid JSON. Do NOT include score.
+    return render_template("result.html", analysis=analysis)
 
-Ensure weaknesses are REAL skill-based weaknesses.
-
-Format:
-{{
-  "target_role": "{profession}",
-  "skills_identified": [],
-  "strengths": [],
-  "weaknesses": [],
-  "skill_gaps": [],
-  "learning_suggestions": [],
-  "tools_recommended": [],
-  "internship_recommendations": []
-}}
-
-Resume:
-{resume_text}
-"""
-
-    response = groq_client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.3
-    )
-
-    raw = response.choices[0].message.content.strip()
-
-    try:
-        data = json.loads(raw)
-    except:
-        data = {
-            "target_role": profession,
-            "skills_identified": ["Python"],
-            "strengths": ["Basic programming knowledge"],
-            "weaknesses": [
-                "Limited hands-on project experience",
-                "Lack of real-world industry exposure"
-            ],
-            "skill_gaps": ["Advanced concepts"],
-            "learning_suggestions": ["Practice projects"],
-            "tools_recommended": ["Git", "VS Code"],
-            "internship_recommendations": [f"{profession} Intern"]
-        }
-
-    # Save to Google Sheets
-    sheet.append_row([
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        data["target_role"],
-        ", ".join(data["skills_identified"]),
-        ", ".join(data["weaknesses"]),
-        ", ".join(data["internship_recommendations"])
-    ])
-
-    return render_template("result.html", data=data)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(debug=True)

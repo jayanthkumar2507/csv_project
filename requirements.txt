@@ -1,6 +1,5 @@
 flask
-gunicorn
 groq
-PyMuPDF
-gspread
+PyPDF2
+google-api-python-client
 google-auth
