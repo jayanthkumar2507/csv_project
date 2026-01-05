@@ -19,7 +19,7 @@ creds = Credentials.from_service_account_info(
     scopes=["https://www.googleapis.com/auth/spreadsheets"]
 )
 sheet_service = build("sheets", "v4", credentials=creds)
-SHEET_ID = os.environ["GOOGLE_SHEET_ID"]
+SHEET_ID = os.environ["SHEET_ID"]
 
 
 @app.route("/")
