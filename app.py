@@ -86,16 +86,46 @@ def home():
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
-    file = request.files["resume"]
-    profession = request.form.get("profession")
+    try:
+        # Check file
+        if "resume" not in request.files:
+            return "Resume field missing", 400
 
-    text = extract_text(file)
-    analysis = analyze_resume(text, profession)
+        file = request.files["resume"]
 
-    save_to_sheets(file.filename, profession, analysis)
+        if file.filename == "":
+            return "No file selected", 400
 
-    return render_template("result.html", analysis=analysis)
+        role = request.form.get("role", "Not selected")
 
+        # Save file safely
+        filepath = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
+        file.save(filepath)
+
+        # SAFE STATIC RESULT (no AI yet)
+        result_text = f"""
+Target Role:
+{role}
+
+Skills Identified:
+- Python programming
+- Data visualization
+- Data cleaning
+
+Strengths:
+- Good fundamentals
+- Logical thinking
+
+Skill Gaps:
+- Machine learning
+- Advanced analytics
+"""
+
+        return render_template("result.html", data=result_text)
+
+    except Exception as e:
+        # THIS PREVENTS 500 ERROR
+        return f"Error occurred: {str(e)}", 500
 
 if __name__ == "__main__":
     app.run(debug=True)
