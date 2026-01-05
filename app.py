@@ -40,12 +40,35 @@ def analyze():
     resume_text = "\n".join([p.extract_text() or "" for p in reader.pages])
 
     prompt = f"""
-Analyze the resume and return ONLY plain text (no **, no markdown):
+Analyze the resume and respond in CLEAN PLAIN TEXT.
 
-Target Role
-Skills Identified
-Strengths
-Skill Gaps
+IMPORTANT RULES:
+- DO NOT use **bold**, markdown, asterisks, or special formatting
+- Use normal headings followed by colon
+- Use simple bullet points with "-"
+
+FORMAT EXACTLY LIKE THIS:
+
+REVIEW OF RESUME:
+
+OVERALL IMPRESSION:
+(text)
+
+STRENGTHS:
+- point
+- point
+
+WEAKNESSES:
+- point
+- point
+
+CAREER SUGGESTIONS:
+- point
+- point
+
+INTERNSHIP RECOMMENDATIONS:
+- point
+- point
 
 Resume:
 {resume_text}
