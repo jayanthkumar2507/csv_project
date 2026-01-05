@@ -7,7 +7,7 @@ Users can upload a PDF resume and instantly receive AI-driven insights.
 
 ## 🌐 Live Application
 
-🔗 https://csv-project-2.onrender.com 
+🔗 https://csv-project-28.onrender.com
 ❌ No secrets or credential files are committed to GitHub.
 
 ---
@@ -126,4 +126,5 @@ csv_project/
 ## 🔐 Environment Variables (Production)
 
 All sensitive data is handled using environment variables on the deployment platform.
+
 
